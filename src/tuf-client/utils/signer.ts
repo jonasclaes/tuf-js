@@ -27,7 +27,6 @@ export const verifySignature = (
   return false;
 };
 
-
 export const sign = (bytes: string): Record<string, any> => {
-  return {}
-}
+  return {};
+};

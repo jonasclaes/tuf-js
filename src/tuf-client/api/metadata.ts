@@ -3,6 +3,7 @@ import util from 'util';
 import * as signer from '../utils/signer';
 import { JSONObject, JSONValue } from '../utils/type';
 import { Signed, SignedOptions } from './signed';
+import { Role } from './role';
 
 export enum MetadataKind {
   Root = 'root',
@@ -10,6 +11,13 @@ export enum MetadataKind {
   Snapshot = 'snapshot',
   Targets = 'targets',
 }
+
+const TOP_LEVEL_ROLE_NAMES = [
+  MetadataKind.Root,
+  MetadataKind.Timestamp,
+  MetadataKind.Snapshot,
+  MetadataKind.Targets,
+];
 
 type MetadataType = Root | Timestamp | Snapshot | Targets;
 
@@ -188,47 +196,63 @@ export class Key {
   }
 }
 
-export class Role {}
+type KeyMap = Record<string, Key>;
+type RoleMap = Record<string, Role>;
 
-type RootOptions = SignedOptions & {
-  keys: Record<string, Key>;
-  roles: Record<string, Role>;
-  consistentSnapshot: boolean;
+export type RootOptions = SignedOptions & {
+  keys?: KeyMap;
+  roles?: RoleMap;
+  consistentSnapshot?: boolean;
 };
 
 export class Root extends Signed {
-  public readonly type = MetadataKind.Root;
-  public keys: Record<string, Key>;
-  private consistentSnapshot: boolean;
+  readonly type = MetadataKind.Root;
+  readonly keys: KeyMap;
+  readonly roles: RoleMap;
+  readonly consistentSnapshot: boolean;
 
   constructor(options: RootOptions) {
     super(options);
 
     this.keys = options.keys || {};
-    this.consistentSnapshot = options.consistentSnapshot ?? false;
+    this.consistentSnapshot = options.consistentSnapshot ?? true;
 
-    // TODO: work on roles
+    if (!options.roles) {
+      this.roles = TOP_LEVEL_ROLE_NAMES.reduce<RoleMap>((acc, role) => {
+        acc[role] = new Role({ keyIDs: [], threshold: 1 });
+        return acc;
+      }, {});
+    } else {
+      const roleNames = new Set(Object.keys(options.roles));
+      if (!TOP_LEVEL_ROLE_NAMES.every((role) => roleNames.has(role))) {
+        throw new Error('Missing top-level role');
+      }
+
+      this.roles = options.roles;
+    }
   }
 
   public static fromJSON(data: JSONObject): Root {
     const { unrecognizedFields, ...commonFields } =
       Signed.commonFieldsFromJSON(data);
-    const { keys, roles, consistent_snapshot, ...rest } = unrecognizedFields;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { keys, roles, consistent_snapshot, ...rest } =
+      unrecognizedFields as any;
 
     const keySet: Record<string, Key> = {};
     Object.entries(keys).forEach(([keyID, keyData]) => {
       keySet[keyID] = Key.fromJSON(keyID, keyData);
     });
 
-    for (const roleName in keys) {
-      // TODO:
-      // roles[roleName] = new Role().fromJSON(roleName, roles[roleName]);
-    }
+    const roleSet: Record<string, Role> = {};
+    Object.entries(roles).forEach(([roleName, roleData]) => {
+      roleSet[roleName] = Role.fromJSON(roleData);
+    });
 
     return new Root({
       ...commonFields,
-      keys,
-      roles,
+      keys: keySet,
+      roles: roleSet,
       consistentSnapshot: consistent_snapshot,
       unrecognizedFields: rest,
     });

@@ -1,4 +1,5 @@
 import util from 'util';
+import { JSONValue } from '../utils/type';
 
 const SPECIFICATION_VERSION = ['1', '20', '30'];
 
@@ -6,7 +7,7 @@ export interface SignedOptions {
   version?: number;
   specVersion?: string;
   expires?: number;
-  unrecognizedFields?: any;
+  unrecognizedFields?: Record<string, JSONValue>;
 }
 
 export abstract class Signed {
@@ -57,6 +58,7 @@ export abstract class Signed {
     return referenceTime >= this.expires;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public static commonFieldsFromJSON(data: any): SignedOptions {
     const { spec_version, expires, version, ...rest } = data;
     const exp = new Date(expires).getTime();

@@ -1,10 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { MetadataKind } from '../api/metadata';
 import { updaterConfig } from '../utils/config';
 import { JSONObject } from '../utils/type';
 import { TrustedMetadataSet } from './internal/trustedMetadataSet';
 
-interface UodaterOptions {
+interface UpdateOptions {
   metadataDir: string;
   metadataBaseUrl: string;
   targetDir?: string;
@@ -19,7 +20,7 @@ export class Updater {
   private trustedSet?: TrustedMetadataSet;
   private config?: typeof updaterConfig;
 
-  constructor(options: UodaterOptions) {
+  constructor(options: UpdateOptions) {
     const { metadataDir, metadataBaseUrl, targetDir, targetBaseUrl } = options;
 
     this.dir = metadataDir;
@@ -28,7 +29,7 @@ export class Updater {
     this.targetDir = targetDir;
     this.targetBaseUrl = targetBaseUrl;
 
-    const data = this.loadLocalMetadata();
+    const data = this.loadLocalMetadata(MetadataKind.Root);
     this.trustedSet = new TrustedMetadataSet(data);
     this.config = updaterConfig;
 
@@ -37,8 +38,8 @@ export class Updater {
     // self.config = config or UpdaterConfig()
   }
 
-  private loadLocalMetadata(): JSONObject {
-    const filePath = path.join(this.dir, '1.root.json');
+  private loadLocalMetadata(role: MetadataKind): JSONObject {
+    const filePath = path.join(this.dir, `${role}.json`);
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   }
 

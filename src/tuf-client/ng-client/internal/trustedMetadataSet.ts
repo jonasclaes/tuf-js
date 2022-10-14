@@ -36,5 +36,6 @@ export class TrustedMetadataSet {
 
     this.trustedSet['root'] = root;
     console.info('Loaded trusted root v%d', root.signed.version);
+    console.log(root);
   }
 }
